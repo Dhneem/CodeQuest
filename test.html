@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Engine smoke tests</title></head>
+<body>
+<script src="i18n.js"></script>
+<script src="content.js"></script>
+<script src="knowledge.js"></script>
+<script src="engine.js"></script>
+<script src="mentor.js"></script>
+<script>
+window.results = [];
+function report(name, pass, detail) { window.results.push({ name, pass: !!pass, detail: detail || "" }); }
+
+/* Seed a fresh learner state */
+State.data = State.defaults();
+State.data.language = "en";
+State.data.path = "web";
+
+/* ---------- 1. JS engine ---------- */
+(function () {
+  const step = findStep("s-js-vars").step;
+  const run = Engine.runJs('function greet(name){ return "Hello, " + name; }\nconst myName = "Sara";');
+  report("JS engine runs code", run.ok, run.error || "");
+  const res = Engine.checkJs(step.tests, run.scope);
+  report("JS tests pass for s-js-vars", res.every(r => r.pass), JSON.stringify(res));
+})();
+
+(function () {
+  const step = findStep("s-se-binary").step;
+  const code = step.solution;
+  const run = Engine.runJs(code);
+  const res = Engine.checkJs(step.tests, run.scope);
+  report("binarySearch solution passes its own tests", res.every(r => r.pass), JSON.stringify(res));
+})();
+
+/* Every JS-step solution must pass its own tests */
+(function () {
+  let allOk = true; const fails = [];
+  for (const p of PATHS) {
+    for (const s of allSteps(p)) {
+      if (s.kind !== "js" || !s.solution || !s.tests) continue;
+      try {
+        const run = Engine.runJs(s.solution);
+        if (!run.ok) { allOk = false; fails.push(s.id + ":RUN:" + run.error); continue; }
+        const res = Engine.checkJs(s.tests, run.scope);
+        if (!res.every(r => r.pass)) { allOk = false; fails.push(s.id + ":" + JSON.stringify(res.filter(r=>!r.pass).map(r=>r.label))); }
+      } catch (e) { allOk = false; fails.push(s.id + ":EXC:" + e.message); }
+    }
+  }
+  report("All JS solutions pass their own tests", allOk, fails.join(" | "));
+})();
+
+/* ---------- 2. HTML engine ---------- */
+(async function () {
+  const step = findStep("s-html-first").step;
+  const out = await Engine.checkStep(step, step.solution);
+  report("HTML engine: first-challenge solution passes", out.allPass, JSON.stringify(out.results));
+  window.htmlDone = true;
+})();
+
+/* ---------- 3. Mentor ---------- */
+(function () {
+  const r1 = Mentor.reply("general", "What is programming?");
+  report("Mentor answers 'What is programming?'", typeof r1 === "string" && r1.length > 30, r1.slice(0, 60));
+  State.data.language = "ar";
+  const r2 = Mentor.reply("general", "ما هي البرمجة؟");
+  report("Mentor answers Arabic question in Arabic", /[\u0600-\u06FF]/.test(r2), r2.slice(0, 60));
+  State.data.language = "en";
+  const r3 = Mentor.reply("general", "ما هي واجهات API؟");
+  report("Mentor answers Arabic API question", typeof r3 === "string" && r3.length > 30, r3.slice(0, 60));
+  const r4 = Mentor.reply("path", "How does HTML work?");
+  report("Path chat replies", typeof r4 === "string" && r4.length > 20, r4.slice(0, 60));
+  const r5 = Mentor.reply("mentor", "I'm stuck, my code is not working");
+  report("Mentor is Socratic on stuck", /\?/.test(r5), r5.slice(0, 60));
+})();
+
+/* ---------- 4. Topic matching ---------- */
+(function () {
+  const t1 = findTopic("What are APIs?");
+  report("findTopic finds API topic", t1 && t1.id === "what-is-api", t1 && t1.id);
+  const t2 = findTopic("كيف تعمل قواعد البيانات؟");
+  report("findTopic matches Arabic DB question", t2 && t2.id === "how-db", t2 && t2.id);
+  const t3 = findTopic("How do I validate a form?");
+  report("findTopic finds forms/validation topic", t3 && t3.id === "forms-and-validation", t3 && t3.id);
+  const t4 = findTopic("ما هو التحقق من النماذج؟");
+  report("findTopic matches Arabic validation question", t4 && t4.id === "forms-and-validation", t4 && t4.id);
+  const t5 = findTopic("How do I use localStorage?");
+  report("findTopic finds localStorage topic", t5 && t5.id === "local-storage", t5 && t5.id);
+  const t6 = findTopic("كيف أحفظ البيانات؟");
+  report("findTopic matches Arabic persistence question", t6 && t6.id === "local-storage", t6 && t6.id);
+  const t7 = findTopic("What is recursion?");
+  report("findTopic finds recursion topic", t7 && t7.id === "recursion-explained", t7 && t7.id);
+  const t8 = findTopic("اشرح الاستدعاء الذاتي");
+  report("findTopic matches Arabic recursion question", t8 && t8.id === "recursion-explained", t8 && t8.id);
+  const t9 = findTopic("What does reduce do?");
+  report("findTopic finds higher-order topic", t9 && t9.id === "higher-order-functions", t9 && t9.id);
+  const t10 = findTopic("ما هي الدوال العليا؟");
+  report("findTopic matches Arabic HOF question", t10 && t10.id === "higher-order-functions", t10 && t10.id);
+})();
+
+/* ---------- 5. Canvas engine (auto-run, results polled later) ---------- */
+window.__canvasOut = [];
+(async function () {
+  const steps = [];
+  for (const p of PATHS) for (const s of allSteps(p)) if (s.kind === "canvas") steps.push(s);
+  for (const s of steps) {
+    const r = await Engine.checkStep(s, s.solution);
+    window.__canvasOut.push({ id: s.id, pass: r.allPass, fails: (r.results || []).filter(x => !x.pass).map(x => x.label), err: r.error });
+  }
+  window.__canvasDone = true;
+})();
+
+/* ---------- 6. HTML-kind solutions (auto-run) ---------- */
+window.__htmlOut = [];
+(async function () {
+  const steps = [];
+  for (const p of PATHS) for (const s of allSteps(p)) if ((s.kind === "html") && s.solution && s.tests) steps.push(s);
+  for (const s of steps) {
+    const r = await Engine.checkStep(s, s.solution);
+    window.__htmlOut.push({ id: s.id, pass: r.allPass, fails: (r.results || []).filter(x => !x.pass).map(x => x.label), err: r.error });
+  }
+  window.__htmlDone = true;
+})();
+
+/* ---------- 7. C / C++ solutions (auto-run, transpiled subset) ---------- */
+window.__cppOut = [];
+(async function () {
+  const steps = [];
+  for (const p of PATHS) for (const s of allSteps(p)) if ((s.kind === "c" || s.kind === "cpp") && s.solution && s.tests) steps.push(s);
+  for (const s of steps) {
+    const r = await Engine.checkStep(s, s.solution);
+    window.__cppOut.push({ id: s.id, pass: r.allPass, fails: (r.results || []).filter(x => !x.pass).map(x => x.label), err: r.error });
+  }
+  window.__cppDone = true;
+})();
+
+window.done = true;
+</script>
+</body>
+</html>

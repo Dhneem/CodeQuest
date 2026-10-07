@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CodeQuest — Learn by Doing | كودكويست — تعلّم بالممارسة</title>
+<meta name="description" content="Interactive coding education platform. Learn by doing: build real projects, solve challenges, earn certificates. منصة تفاعلية لتعلم البرمجة: تعلّم بالممارسة، ابنِ مشاريع حقيقية، واحصل على شهادات.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app"></div>
+
+<!-- Toasts -->
+<div id="toasts" class="toasts" aria-live="polite"></div>
+
+<!-- Chat drawer -->
+<aside id="chatDrawer" class="chat-drawer" hidden aria-label="AI Chat">
+  <header class="chat-head">
+    <div>
+      <h3 id="chatTitle">AI Mentor</h3>
+      <p id="chatSubtitle" class="chat-sub"></p>
+    </div>
+    <div class="chat-head-actions">
+      <button id="chatReset" class="btn btn-ghost btn-sm" title="New conversation">↺</button>
+      <button id="chatClose" class="btn btn-ghost btn-sm" title="Close">✕</button>
+    </div>
+  </header>
+  <div id="chatMessages" class="chat-messages"></div>
+  <div id="chatSuggestions" class="chat-suggestions"></div>
+  <form id="chatForm" class="chat-form">
+    <input id="chatInput" type="text" autocomplete="off" placeholder="">
+    <button class="btn btn-primary" type="submit" id="chatSend">➤</button>
+  </form>
+</aside>
+
+<script src="i18n.js"></script>
+<script src="content.js"></script>
+<script src="knowledge.js"></script>
+<script src="engine.js"></script>
+<script src="editor.js"></script>
+<script src="mentor.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
