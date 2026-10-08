@@ -1,0 +1,15 @@
+{
+  "name": "codequest",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CodeQuest — bilingual (EN/AR) learn-by-doing programming app with a zero-dependency Node server.",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node dev-server.js",
+    "check": "node --check app.js && node --check content.js && node --check editor.js && node --check engine.js && node --check i18n.js && node --check knowledge.js && node --check mentor.js && node --check run-tests.js && node --check server.js && node --check dev-server.js",
+    "test": "npm run check && node run-tests.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
