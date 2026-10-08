@@ -143,6 +143,12 @@ const Router = {
 
     // Language gate
     if (!State.data.language) { app.innerHTML = Views.welcome(); bindWelcome(); return; }
+    // Auth gate — an account is required before anything else: every route
+    // except "auth" shows the login/sign-up form until the user is signed in.
+    if (!Auth.user) {
+      const authMode = route === "auth" ? param : "login";
+      app.innerHTML = Views.auth(authMode); bindAuthView(authMode); return;
+    }
     if (!State.data.path && !["pathpick", "settings", "roadmap"].includes(route)) { app.innerHTML = Views.pathpick(); bindPathpick(); return; }
 
     applyLanguage(); applyTheme(); updateNotifDot();
@@ -205,6 +211,9 @@ window.addEventListener("hashchange", () => Router.render());
 function topbarHtml(active) {
   const lang = State.data.language === "ar" ? "ar" : "en";
   const other = lang === "ar" ? "EN" : "ع";
+  /* Pre-auth surface is minimal (brand + language + theme only): no nav,
+     XP/streak chips, notifications, mentor chat, settings or avatar. */
+  const authed = !!Auth.user;
   const navItems = [
     ["home", t("navHome")], ["dashboard", t("navDashboard")], ["achievements", t("navAchievements")],
     ["certificates", t("navCertificates")], ["roadmap", t("navRoadmap")], ["explore", t("navExplore")]
@@ -213,18 +222,18 @@ function topbarHtml(active) {
   return `
   <header class="topbar">
     <div class="brand" data-nav="home"><span class="logo">🚀</span><span><b>Code</b>Quest</span></div>
-    <nav class="topnav">
+    ${authed ? `<nav class="topnav">
       ${navItems.map(([r, lbl]) => `<button data-nav="${r}" class="${active === r ? "active" : ""}">${lbl}</button>`).join("")}
-    </nav>
+    </nav>` : ""}
     <div class="top-spacer"></div>
-    <span class="chip lvl">⚡ ${State.data.xp} ${t("xp")}</span>
-    <span class="chip">🔥 ${currentStreak()}</span>
+    ${authed ? `<span class="chip lvl">⚡ ${State.data.xp} ${t("xp")}</span>
+    <span class="chip">🔥 ${currentStreak()}</span>` : ""}
     <button class="iconbtn" id="langBtn" title="${t("languageLabel")}">${other}</button>
     <button class="iconbtn" id="themeBtn" title="${t("themeToggle")}">${State.data.theme === "light" ? "☀️" : "🌙"}</button>
-    <button class="iconbtn" id="notifBtn" title="${t("notifTitle")}">🔔<span class="dot" style="display:none"></span></button>
+    ${authed ? `<button class="iconbtn" id="notifBtn" title="${t("notifTitle")}">🔔<span class="dot" style="display:none"></span></button>
     <button class="iconbtn" id="chatMentorBtn" title="${t("chatMentor")}">🤖</button>
     <button class="iconbtn" data-nav="settings" title="${t("settings")}">⚙️</button>
-    <div class="avatar" data-nav="auth" title="${t("authAccountTitle")}">${esc((Auth.user ? (Auth.user.name || Auth.user.username) : "★")[0].toUpperCase())}</div>
+    <div class="avatar" data-nav="auth" title="${t("authAccountTitle")}">${esc((Auth.user.name || Auth.user.username)[0].toUpperCase())}</div>` : ""}
   </header>`;
 }
 
@@ -1083,9 +1092,10 @@ State.save = function () { __origStateSave(); autoSyncPush(); };
 
 /* ============================================================
    AUTH — accounts, login/signup, admin
-   Talks to server.js /api/auth/*. Guest browsing stays fully
-   supported; accounts add a password-protected profile that
-   remembers your progress code on any device.
+   Talks to server.js /api/auth/*. An account is mandatory:
+   Router.paint gates every route behind the login/sign-up form
+   (Router.paint auth gate), and the pre-auth topbar exposes only
+   language and theme controls.
    ============================================================ */
 const Auth = {
   KEY: "codequest.auth",
@@ -1203,7 +1213,7 @@ function authFormHtml(m) {
       </form>
       <p class="muted small" style="margin-top:14px;text-align:center">${t(signup ? "authSwitchToLogin" : "authSwitchToSignup")}</p>
       ${signup ? `<p class="muted small" id="adminHint" style="display:none;text-align:center">${t("authFirstAdminHint")}</p>` : ""}
-      <p class="muted small" style="text-align:center;margin-top:6px">${t("authGuestNote")}</p>
+      <p class="muted small" style="text-align:center;margin-top:6px">${t("authRequiredNote")}</p>
     </div>`;
 }
 
